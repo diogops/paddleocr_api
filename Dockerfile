@@ -85,11 +85,6 @@ COPY server.py /app/server.py
 ENV PORT=8000
 EXPOSE ${PORT}
 
-# Healthcheck para o SaladCloud - usando curl para maior compatibilidade
-# Usa variável PORT para flexibilidade
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/health || exit 1
-
 # Inicia a API - 0.0.0.0 para aceitar conexões externas
 # --workers 4: 4 processos worker para paralelismo
 # --preload: Carrega app antes de fazer fork para evitar race condition no download de modelos
@@ -97,4 +92,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
 # OTIMIZAÇÃO GPU: server.py detecta GPU e ajusta automaticamente:
 #   - GPU: 2 instâncias OCR + processamento SERIAL das rotações
 #   - CPU: 4 instâncias OCR + processamento PARALELO das rotações
-CMD gunicorn server:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT} --preload
+# CMD gunicorn server:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT} --preload
+# Starta a API
+# CMD ["gunicorn", "server:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "*:$(PORT)", "--preload"]
+CMD ["uvicorn", "server:app", "--host", "*", "--port", "8000"]

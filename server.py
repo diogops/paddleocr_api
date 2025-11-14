@@ -17,14 +17,17 @@ import threading
 import numpy as np
 import cv2
 import fitz  # PyMuPDF para suporte a PDF
+
 # Tesseract removido - usando apenas PaddleOCR racing
 import queue
 import hashlib  # Para deduplicação de imagens por hash
+
 app = FastAPI()
 
 # ============================================================================
 # POOL DE INSTÂNCIAS PADDLEOCR PARA ALTA CONCORRÊNCIA
 # ============================================================================
+
 
 # Detectar automaticamente se há GPU disponível
 def check_gpu_available():
@@ -39,9 +42,13 @@ def check_gpu_available():
         import os
 
         # Verificar variáveis de ambiente CUDA
-        cuda_visible = os.environ.get('CUDA_VISIBLE_DEVICES', '')
-        print(f"CUDA_VISIBLE_DEVICES: {cuda_visible if cuda_visible else 'não configurado'}")
-        print(f"LD_LIBRARY_PATH: {os.environ.get('LD_LIBRARY_PATH', 'não configurado')}")
+        cuda_visible = os.environ.get("CUDA_VISIBLE_DEVICES", "")
+        print(
+            f"CUDA_VISIBLE_DEVICES: {cuda_visible if cuda_visible else 'não configurado'}"
+        )
+        print(
+            f"LD_LIBRARY_PATH: {os.environ.get('LD_LIBRARY_PATH', 'não configurado')}"
+        )
 
         gpu_count = paddle.device.cuda.device_count()
         has_gpu = gpu_count > 0
@@ -54,12 +61,13 @@ def check_gpu_available():
                 # Verificar se cuDNN está disponível
                 try:
                     import paddle.fluid as fluid
+
                     print(f"PaddlePaddle version: {paddle.__version__}")
                     print("Testando inicialização CUDA...")
                 except Exception as import_err:
                     print(f"⚠️  Erro ao importar Paddle Fluid: {import_err}")
 
-                paddle.device.set_device('gpu:0')
+                paddle.device.set_device("gpu:0")
 
                 # Criar um tensor pequeno para testar CUDA
                 test_tensor = paddle.ones([1, 1])
@@ -75,15 +83,17 @@ def check_gpu_available():
                 print(f"   Erro: {error_msg}")
 
                 # Verificar se é erro de cuDNN
-                if 'cudnn' in error_msg.lower():
+                if "cudnn" in error_msg.lower():
                     print(f"   PROBLEMA: cuDNN não está configurado corretamente")
-                    print(f"   SOLUÇÃO: Use Dockerfile.gpu-fixed que instala cuDNN corretamente")
+                    print(
+                        f"   SOLUÇÃO: Use Dockerfile.gpu-fixed que instala cuDNN corretamente"
+                    )
 
                 print(f"⚠️  FALLBACK: Usando CPU (modo seguro)")
                 print(f"   NOTA: Para usar GPU, corrija a instalação do cuDNN")
 
                 # CRITICAL: Forçar uso de CPU para evitar segfault
-                paddle.device.set_device('cpu')
+                paddle.device.set_device("cpu")
                 return False
         else:
             print("⚠️  Nenhuma GPU detectada - usando CPU")
@@ -96,11 +106,13 @@ def check_gpu_available():
         # CRITICAL: Garantir que está em modo CPU
         try:
             import paddle
-            paddle.device.set_device('cpu')
+
+            paddle.device.set_device("cpu")
         except:
             pass
 
         return False
+
 
 USE_GPU = check_gpu_available()
 
@@ -113,30 +125,33 @@ OCR_POOL_SIZE = 2 if USE_GPU else 4
 print(f"Inicializando pool de {OCR_POOL_SIZE} instâncias PaddleOCR...")
 ocr_pool = queue.Queue(maxsize=OCR_POOL_SIZE)
 
+
 def create_ocr_instance(use_gpu: bool, instance_id: int):
     """Cria instância PaddleOCR com configuração otimizada"""
     # Configuração base
     ocr_config = {
-        'use_gpu': use_gpu,
-        'use_angle_cls': False,  # Classificador de ângulo desabilitado
-        'lang': 'pt',  # Português
+        "use_gpu": use_gpu,
+        "use_angle_cls": False,  # Classificador de ângulo desabilitado
+        "lang": "pt",  # Português
         # PARÂMETROS OTIMIZADOS PARA CNH/RG
-        'det_db_thresh': 0.2,  # Threshold REDUZIDO para detectar texto de baixo contraste
-        'det_db_box_thresh': 0.5,  # Threshold de confiança REDUZIDO
-        'det_limit_side_len': 1920,  # Preservar detalhes
-        'rec_batch_num': 6 if use_gpu else 8,  # Batch menor em GPU para economizar memória
-        'drop_score': 0.4,  # Aceitar mais reconhecimentos
+        "det_db_thresh": 0.2,  # Threshold REDUZIDO para detectar texto de baixo contraste
+        "det_db_box_thresh": 0.5,  # Threshold de confiança REDUZIDO
+        "det_limit_side_len": 1920,  # Preservar detalhes
+        "rec_batch_num": (
+            6 if use_gpu else 8
+        ),  # Batch menor em GPU para economizar memória
+        "drop_score": 0.4,  # Aceitar mais reconhecimentos
     }
 
     # Configuração específica GPU
     if use_gpu:
-        ocr_config['gpu_mem'] = 4000  # 4GB por instância (seguro para GPUs com 8GB+)
-        ocr_config['enable_mkldnn'] = False  # Desabilitar MKL-DNN em GPU
-        ocr_config['gpu_id'] = 0  # Sempre usar GPU 0
+        ocr_config["gpu_mem"] = 4000  # 4GB por instância (seguro para GPUs com 8GB+)
+        ocr_config["enable_mkldnn"] = False  # Desabilitar MKL-DNN em GPU
+        ocr_config["gpu_id"] = 0  # Sempre usar GPU 0
     else:
         # Otimizações CPU
-        ocr_config['enable_mkldnn'] = True  # Intel MKL-DNN aceleração
-        ocr_config['cpu_threads'] = 4
+        ocr_config["enable_mkldnn"] = True  # Intel MKL-DNN aceleração
+        ocr_config["cpu_threads"] = 4
 
     try:
         instance = PaddleOCR(**ocr_config)
@@ -146,17 +161,18 @@ def create_ocr_instance(use_gpu: bool, instance_id: int):
         # Se falhar com GPU, tentar CPU como fallback
         if use_gpu:
             print(f"    🔄 Tentando fallback para CPU...")
-            ocr_config['use_gpu'] = False
-            ocr_config['enable_mkldnn'] = True
-            ocr_config['cpu_threads'] = 4
-            if 'gpu_mem' in ocr_config:
-                del ocr_config['gpu_mem']
-            if 'gpu_id' in ocr_config:
-                del ocr_config['gpu_id']
+            ocr_config["use_gpu"] = False
+            ocr_config["enable_mkldnn"] = True
+            ocr_config["cpu_threads"] = 4
+            if "gpu_mem" in ocr_config:
+                del ocr_config["gpu_mem"]
+            if "gpu_id" in ocr_config:
+                del ocr_config["gpu_id"]
             instance = PaddleOCR(**ocr_config)
             return instance
         else:
             raise
+
 
 instances_using_gpu = 0
 for i in range(OCR_POOL_SIZE):
@@ -170,6 +186,7 @@ for i in range(OCR_POOL_SIZE):
     except Exception as e:
         print(f"  ❌ ERRO CRÍTICO ao criar instância {i+1}: {e}")
         import traceback
+
         traceback.print_exc()
 
 # Atualizar USE_GPU baseado no que realmente foi criado
@@ -177,11 +194,15 @@ if USE_GPU and instances_using_gpu == 0:
     print(f"⚠️  GPU solicitada mas nenhuma instância GPU criada - usando CPU")
     USE_GPU = False
 
-print(f"✅ Pool de OCR inicializado: {ocr_pool.qsize()} instâncias ({'GPU - modo SERIAL' if USE_GPU else 'CPU - modo PARALELO'})")
+print(
+    f"✅ Pool de OCR inicializado: {ocr_pool.qsize()} instâncias ({'GPU - modo SERIAL' if USE_GPU else 'CPU - modo PARALELO'})"
+)
+
 
 # Context manager para usar instâncias do pool de forma thread-safe
 class OCRPoolContext:
     """Context manager para pegar e devolver instâncias OCR do pool"""
+
     def __enter__(self):
         # Pega uma instância disponível do pool (bloqueia se todas estiverem em uso)
         self.ocr = ocr_pool.get()
@@ -190,6 +211,7 @@ class OCRPoolContext:
     def __exit__(self, *args):
         # Devolve a instância para o pool
         ocr_pool.put(self.ocr)
+
 
 # Modelo para o request
 class OCRRequest(BaseModel):
@@ -204,14 +226,17 @@ class OCRRequest(BaseModel):
     class Config:
         extra = "allow"  # Permite campos extras como "0", "1", "keyNames"
 
+
 # Modelo para request base64
 class OCRBase64Request(BaseModel):
     image: str  # Base64 da imagem
     extract_fields: Optional[bool] = False  # Se deve extrair campos estruturados
 
+
 def download_image(url: str) -> bytes:
     """Baixa imagem de uma URL"""
     import time
+
     try:
         t0 = time.time()
         response = requests.get(url, timeout=30)
@@ -221,11 +246,15 @@ def download_image(url: str) -> bytes:
         print(f"⏱️  Download da imagem: {download_time:.2f}s ({size_kb:.1f} KB)")
         return response.content
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Erro ao baixar imagem {url}: {str(e)}")
+        raise HTTPException(
+            status_code=400, detail=f"Erro ao baixar imagem {url}: {str(e)}"
+        )
+
 
 def is_pdf(content: bytes) -> bool:
     """Verifica se o conteúdo é um arquivo PDF"""
-    return content.startswith(b'%PDF')
+    return content.startswith(b"%PDF")
+
 
 def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     """
@@ -262,6 +291,7 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
         if tmp_pdf and os.path.exists(tmp_pdf):
             os.unlink(tmp_pdf)
 
+
 # ============================================================================
 # PRÉ-PROCESSAMENTO DE IMAGEM - DESABILITADO POR QUESTÕES DE PERFORMANCE
 # ============================================================================
@@ -271,7 +301,10 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
 # de baixíssima qualidade.
 # ============================================================================
 
-def preprocess_image_for_ocr(img_array: np.ndarray, aggressive: bool = False, keep_color: bool = True) -> np.ndarray:
+
+def preprocess_image_for_ocr(
+    img_array: np.ndarray, aggressive: bool = False, keep_color: bool = True
+) -> np.ndarray:
     """
     PRÉ-PROCESSAMENTO DESABILITADO - Retorna imagem original
 
@@ -431,7 +464,9 @@ def convert_pdf_to_images(pdf_bytes: bytes, enhance: bool = False) -> List[bytes
 
         pdf_document.close()
 
-        print(f"PDF convertido: {len(images)} página(s) em 288 DPI (sem pré-processamento)")
+        print(
+            f"PDF convertido: {len(images)} página(s) em 288 DPI (sem pré-processamento)"
+        )
 
     except Exception as e:
         print(f"Erro ao converter PDF: {str(e)}")
@@ -443,6 +478,7 @@ def convert_pdf_to_images(pdf_bytes: bytes, enhance: bool = False) -> List[bytes
             os.unlink(tmp_pdf)
 
     return images
+
 
 def preprocess_image_advanced(img: np.ndarray) -> np.ndarray:
     """
@@ -462,7 +498,9 @@ def preprocess_image_advanced(img: np.ndarray) -> np.ndarray:
             gray = img.copy()
 
         # 2. Denoise - Remove ruído preservando bordas
-        denoised = cv2.fastNlMeansDenoising(gray, None, h=10, templateWindowSize=7, searchWindowSize=21)
+        denoised = cv2.fastNlMeansDenoising(
+            gray, None, h=10, templateWindowSize=7, searchWindowSize=21
+        )
 
         # 3. CLAHE - Melhora contraste local adaptivamente
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
@@ -484,7 +522,10 @@ def preprocess_image_advanced(img: np.ndarray) -> np.ndarray:
             return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         return img
 
-def process_single_rotation_paddle(img_array: np.ndarray, angle: int, enhance: bool = True) -> dict:
+
+def process_single_rotation_paddle(
+    img_array: np.ndarray, angle: int, enhance: bool = True
+) -> dict:
     """
     Processa uma única rotação da imagem com PaddleOCR
 
@@ -500,7 +541,9 @@ def process_single_rotation_paddle(img_array: np.ndarray, angle: int, enhance: b
     try:
         # Rotacionar imagem usando cv2
         if angle == 90:
-            rotated = cv2.rotate(img_array, cv2.ROTATE_90_COUNTERCLOCKWISE)  # Anti-horário
+            rotated = cv2.rotate(
+                img_array, cv2.ROTATE_90_COUNTERCLOCKWISE
+            )  # Anti-horário
         elif angle == 180:
             rotated = cv2.rotate(img_array, cv2.ROTATE_180)
         elif angle == 270:
@@ -536,27 +579,22 @@ def process_single_rotation_paddle(img_array: np.ndarray, angle: int, enhance: b
                     confidence = line[1][1]
                     all_text.append(text)
 
-        extracted_text = ' '.join(all_text)
+        extracted_text = " ".join(all_text)
         char_count = len(extracted_text.strip())
 
         # Log detalhado incluindo número de bounding boxes
         print(f"  Rotação {angle:4}°: {num_boxes:2} boxes, {char_count:4} chars")
 
         return {
-            'angle': angle,
-            'text': extracted_text,
-            'char_count': char_count,
-            'num_boxes': num_boxes
+            "angle": angle,
+            "text": extracted_text,
+            "char_count": char_count,
+            "num_boxes": num_boxes,
         }
 
     except Exception as e:
         print(f"Erro ao processar rotação {angle}°: {e}")
-        return {
-            'angle': angle,
-            'text': '',
-            'char_count': 0,
-            'num_boxes': 0
-        }
+        return {"angle": angle, "text": "", "char_count": 0, "num_boxes": 0}
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
@@ -565,7 +603,9 @@ def process_single_rotation_paddle(img_array: np.ndarray, angle: int, enhance: b
 # Função detect_image_orientation removida - usando apenas PaddleOCR racing
 
 
-def perform_ocr(image_bytes: bytes, enhance: bool = True, expected_name: str = None) -> str:
+def perform_ocr(
+    image_bytes: bytes, enhance: bool = True, expected_name: str = None
+) -> str:
     """
     Realiza OCR em uma imagem (bytes) e retorna texto concatenado
 
@@ -583,6 +623,7 @@ def perform_ocr(image_bytes: bytes, enhance: bool = True, expected_name: str = N
         expected_name: Nome esperado no documento (opcional, não usado atualmente)
     """
     import time
+
     start_time = time.time()
 
     try:
@@ -598,7 +639,9 @@ def perform_ocr(image_bytes: bytes, enhance: bool = True, expected_name: str = N
 
         # Redimensionar se imagem for muito grande (> 1920px para preservar detalhes)
         height, width = img.shape[:2]
-        max_dimension = 1920  # Aumentado de 2000 para 1920 (compatível com det_limit_side_len)
+        max_dimension = (
+            1920  # Aumentado de 2000 para 1920 (compatível com det_limit_side_len)
+        )
         if max(height, width) > max_dimension:
             if height > width:
                 new_height = max_dimension
@@ -606,8 +649,12 @@ def perform_ocr(image_bytes: bytes, enhance: bool = True, expected_name: str = N
             else:
                 new_width = max_dimension
                 new_height = int(height * (max_dimension / width))
-            img = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
-            print(f"Imagem redimensionada: {width}x{height} → {new_width}x{new_height}px")
+            img = cv2.resize(
+                img, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4
+            )
+            print(
+                f"Imagem redimensionada: {width}x{height} → {new_width}x{new_height}px"
+            )
         else:
             print(f"Imagem original: {width}x{height}px")
 
@@ -636,32 +683,44 @@ def perform_ocr(image_bytes: bytes, enhance: bool = True, expected_name: str = N
             print("Testando múltiplas rotações em PARALELO (racing - modo CPU)...")
             with ThreadPoolExecutor(max_workers=4) as executor:
                 # Desabilitar enhance pois já preprocessamos
-                futures = {executor.submit(process_single_rotation_paddle, img, angle, False): angle
-                          for angle in rotations}
+                futures = {
+                    executor.submit(
+                        process_single_rotation_paddle, img, angle, False
+                    ): angle
+                    for angle in rotations
+                }
 
                 for future in as_completed(futures):
                     result = future.result()
                     results.append(result)
 
         mode = "SERIAL (GPU)" if USE_GPU else "PARALELO (CPU)"
-        print(f"⏱️  Processamento de rotações ({mode}) concluído em {time.time() - t2:.2f}s")
+        print(
+            f"⏱️  Processamento de rotações ({mode}) concluído em {time.time() - t2:.2f}s"
+        )
 
         # SELEÇÃO INTELIGENTE: Priorizar num_boxes (indicador de melhor detecção)
         # Ordenar por: 1) num_boxes (PRINCIPAL), 2) char_count (secundário)
-        best_result = max(results, key=lambda x: (x['num_boxes'], x['char_count']))
-        best_angle = best_result['angle']
-        best_text = best_result['text']
-        best_chars = best_result['char_count']
-        best_boxes = best_result['num_boxes']
+        best_result = max(results, key=lambda x: (x["num_boxes"], x["char_count"]))
+        best_angle = best_result["angle"]
+        best_text = best_result["text"]
+        best_chars = best_result["char_count"]
+        best_boxes = best_result["num_boxes"]
 
         # Log detalhado de todas as rotações testadas
         print(f"\nResultado do racing de rotações:")
-        for r in sorted(results, key=lambda x: (x['num_boxes'], x['char_count']), reverse=True):
-            marker = "✓ MELHOR" if r['angle'] == best_angle else "    "
-            num_boxes = r.get('num_boxes', 0)
-            print(f"  {marker} {r['angle']:3}°: {num_boxes:2} boxes, {r['char_count']:4} caracteres")
+        for r in sorted(
+            results, key=lambda x: (x["num_boxes"], x["char_count"]), reverse=True
+        ):
+            marker = "✓ MELHOR" if r["angle"] == best_angle else "    "
+            num_boxes = r.get("num_boxes", 0)
+            print(
+                f"  {marker} {r['angle']:3}°: {num_boxes:2} boxes, {r['char_count']:4} caracteres"
+            )
 
-        print(f"Usando rotação {best_angle}° ({best_boxes} boxes, {best_chars} caracteres extraídos)")
+        print(
+            f"Usando rotação {best_angle}° ({best_boxes} boxes, {best_chars} caracteres extraídos)"
+        )
 
         # Retornar resultado do PaddleOCR (sem fallback)
         print(f"⏱️  TEMPO TOTAL: {time.time() - start_time:.2f}s")
@@ -670,6 +729,7 @@ def perform_ocr(image_bytes: bytes, enhance: bool = True, expected_name: str = N
     except Exception as e:
         print(f"Erro no OCR: {type(e).__name__}: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return ""
 
@@ -677,6 +737,7 @@ def perform_ocr(image_bytes: bytes, enhance: bool = True, expected_name: str = N
 # ============================================================================
 # FUNÇÕES DE VALIDAÇÃO DE NOME COM FUZZY MATCHING
 # ============================================================================
+
 
 def normalize_text(text: str) -> str:
     """
@@ -687,27 +748,27 @@ def normalize_text(text: str) -> str:
     - Remove quebras de linha
     """
     if not text:
-        return ''
+        return ""
 
     import unicodedata
 
     # Normalização NFD (decompõe caracteres acentuados)
-    text = unicodedata.normalize('NFD', text)
+    text = unicodedata.normalize("NFD", text)
 
     # Remove marcas diacríticas (acentos)
-    text = ''.join(char for char in text if unicodedata.category(char) != 'Mn')
+    text = "".join(char for char in text if unicodedata.category(char) != "Mn")
 
     # Converte para minúsculas
     text = text.lower()
 
     # Remove pontuação e caracteres especiais
-    text = re.sub(r'[.,\/#!$%\^&\*;:{}=\-_`~()]', '', text)
+    text = re.sub(r"[.,\/#!$%\^&\*;:{}=\-_`~()]", "", text)
 
     # Remove todos os espaços em branco
-    text = re.sub(r'\s+', '', text)
+    text = re.sub(r"\s+", "", text)
 
     # Remove quebras de linha
-    text = text.replace('\n', '').replace('\r', '')
+    text = text.replace("\n", "").replace("\r", "")
 
     return text.strip()
 
@@ -736,9 +797,9 @@ def is_name_in_text(expected_name: str, ocr_text: str) -> bool:
     print(f"\n{'='*80}")
     print(f"VALIDAÇÃO DE NOME (SUBSTRING SIMPLES)")
     print(f"{'='*80}")
-    print(f"Nome esperado: \"{expected_name}\"")
-    print(f"Nome normalizado: \"{normalized_name}\"")
-    print(f"Texto normalizado (primeiros 200 chars): \"{normalized_text[:200]}...\"")
+    print(f'Nome esperado: "{expected_name}"')
+    print(f'Nome normalizado: "{normalized_name}"')
+    print(f'Texto normalizado (primeiros 200 chars): "{normalized_text[:200]}..."')
     print(f"Nome encontrado no texto: {'SIM ✅' if found else 'NÃO ❌'}")
     print(f"{'='*80}\n")
 
@@ -766,11 +827,11 @@ def levenshtein_distance(str1: str, str2: str) -> int:
     # Calcula distâncias
     for i in range(1, len1 + 1):
         for j in range(1, len2 + 1):
-            cost = 0 if str1[i-1] == str2[j-1] else 1
+            cost = 0 if str1[i - 1] == str2[j - 1] else 1
             matrix[i][j] = min(
-                matrix[i-1][j] + 1,      # Deleção
-                matrix[i][j-1] + 1,      # Inserção
-                matrix[i-1][j-1] + cost  # Substituição
+                matrix[i - 1][j] + 1,  # Deleção
+                matrix[i][j - 1] + 1,  # Inserção
+                matrix[i - 1][j - 1] + cost,  # Substituição
             )
 
     return matrix[len1][len2]
@@ -793,7 +854,9 @@ def calculate_similarity(str1: str, str2: str) -> float:
     return 1.0 - (distance / max_length)
 
 
-def find_best_word_match(word: str, text: str, min_similarity: float = 0.6, debug: bool = False) -> dict:
+def find_best_word_match(
+    word: str, text: str, min_similarity: float = 0.6, debug: bool = False
+) -> dict:
     """
     Busca a melhor correspondência de uma palavra no texto usando janela deslizante
 
@@ -801,22 +864,22 @@ def find_best_word_match(word: str, text: str, min_similarity: float = 0.6, debu
         dict: {found: bool, similarity: float, matched_text: str, position: int}
     """
     if not word or not text or len(word) < 2:
-        return {'found': False, 'similarity': 0.0, 'matched_text': '', 'position': -1}
+        return {"found": False, "similarity": 0.0, "matched_text": "", "position": -1}
 
     best_similarity = 0.0
-    best_match = ''
+    best_match = ""
     best_position = -1
 
     # PRIMEIRO: Busca exata (substring)
     if word in text:
         position = text.find(word)
         if debug:
-            print(f"      🎯 MATCH EXATO encontrado: \"{word}\" na posição {position}")
+            print(f'      🎯 MATCH EXATO encontrado: "{word}" na posição {position}')
         return {
-            'found': True,
-            'similarity': 1.0,
-            'matched_text': word,
-            'position': position
+            "found": True,
+            "similarity": 1.0,
+            "matched_text": word,
+            "position": position,
         }
 
     # SEGUNDO: Testa com palavras de tamanho variável (±50% do tamanho esperado)
@@ -824,7 +887,7 @@ def find_best_word_match(word: str, text: str, min_similarity: float = 0.6, debu
     max_length = int(len(word) * 1.5)
 
     if debug:
-        print(f"      Buscando \"{word}\" (tamanho: {len(word)})")
+        print(f'      Buscando "{word}" (tamanho: {len(word)})')
         print(f"      Janela: {min_length} a {max_length} caracteres")
         print(f"      Texto tem {len(text)} caracteres")
 
@@ -839,7 +902,7 @@ def find_best_word_match(word: str, text: str, min_similarity: float = 0.6, debu
                 break
             checks_count += 1
 
-            chunk = text[i:i+length]
+            chunk = text[i : i + length]
             similarity = calculate_similarity(word, chunk)
 
             if similarity > best_similarity:
@@ -848,21 +911,25 @@ def find_best_word_match(word: str, text: str, min_similarity: float = 0.6, debu
                 best_position = i
 
                 if debug and similarity >= min_similarity:
-                    print(f"      ✓ Candidato: \"{chunk}\" ({similarity*100:.1f}%)")
+                    print(f'      ✓ Candidato: "{chunk}" ({similarity*100:.1f}%)')
 
     if debug:
-        status = 'ACEITO ✅' if best_similarity >= min_similarity else 'REJEITADO ❌'
-        print(f"      Melhor match: \"{best_match}\" ({best_similarity*100:.1f}%) - {status}")
+        status = "ACEITO ✅" if best_similarity >= min_similarity else "REJEITADO ❌"
+        print(
+            f'      Melhor match: "{best_match}" ({best_similarity*100:.1f}%) - {status}'
+        )
 
     return {
-        'found': best_similarity >= min_similarity,
-        'similarity': best_similarity,
-        'matched_text': best_match,
-        'position': best_position
+        "found": best_similarity >= min_similarity,
+        "similarity": best_similarity,
+        "matched_text": best_match,
+        "position": best_position,
     }
 
 
-def find_name_in_text(expected_name: str, ocr_text: str, threshold: float = 0.70) -> dict:
+def find_name_in_text(
+    expected_name: str, ocr_text: str, threshold: float = 0.70
+) -> dict:
     """
     Verifica se um nome está presente no texto usando técnicas avançadas
 
@@ -878,11 +945,11 @@ def find_name_in_text(expected_name: str, ocr_text: str, threshold: float = 0.70
     """
     if not expected_name or not ocr_text:
         return {
-            'found': False,
-            'confidence': 0.0,
-            'matched_text': '',
-            'method': 'empty_input',
-            'details': []
+            "found": False,
+            "confidence": 0.0,
+            "matched_text": "",
+            "method": "empty_input",
+            "details": [],
         }
 
     # Normaliza ambos os textos
@@ -890,15 +957,17 @@ def find_name_in_text(expected_name: str, ocr_text: str, threshold: float = 0.70
     normalized_ocr_text = normalize_text(ocr_text)
 
     print(f"\n{'='*80}")
-    print('🔍 ANÁLISE DE COMPARAÇÃO DE TEXTO (MODO INTELIGENTE + DEBUG)')
+    print("🔍 ANÁLISE DE COMPARAÇÃO DE TEXTO (MODO INTELIGENTE + DEBUG)")
     print(f"{'='*80}")
-    print(f"Nome esperado: \"{expected_name}\"")
-    print(f"Nome normalizado: \"{normalized_name}\"")
+    print(f'Nome esperado: "{expected_name}"')
+    print(f'Nome normalizado: "{normalized_name}"')
     print(f"Threshold global: {threshold}")
     print(f"\n📝 TEXTO OCR ORIGINAL (primeiros 500 caracteres):")
     print(f"\"{ocr_text[:500]}{'...' if len(ocr_text) > 500 else ''}\"")
     print(f"\n📝 TEXTO OCR NORMALIZADO (primeiros 500 caracteres):")
-    print(f"\"{normalized_ocr_text[:500]}{'...' if len(normalized_ocr_text) > 500 else ''}\"")
+    print(
+        f"\"{normalized_ocr_text[:500]}{'...' if len(normalized_ocr_text) > 500 else ''}\""
+    )
     print(f"Tamanho total do texto normalizado: {len(normalized_ocr_text)} caracteres")
     print(f"{'='*80}\n")
 
@@ -908,11 +977,13 @@ def find_name_in_text(expected_name: str, ocr_text: str, threshold: float = 0.70
         print(f"   Método: substring exata")
         print(f"   Confiança: 1.0\n")
         return {
-            'found': True,
-            'confidence': 1.0,
-            'matched_text': normalized_name,
-            'method': 'exact_match',
-            'details': [{'word': normalized_name, 'similarity': 1.0, 'matched': normalized_name}]
+            "found": True,
+            "confidence": 1.0,
+            "matched_text": normalized_name,
+            "method": "exact_match",
+            "details": [
+                {"word": normalized_name, "similarity": 1.0, "matched": normalized_name}
+            ],
         }
 
     # 2. Análise palavra por palavra com fuzzy matching INTELIGENTE
@@ -929,39 +1000,43 @@ def find_name_in_text(expected_name: str, ocr_text: str, threshold: float = 0.70
 
         # Pula palavras muito pequenas
         if len(normalized_word) < 2:
-            print(f"   ⏭️  \"{original_word}\" - Palavra muito curta, ignorada")
+            print(f'   ⏭️  "{original_word}" - Palavra muito curta, ignorada')
             continue
 
         # Busca a melhor correspondência desta palavra no texto
-        word_match = find_best_word_match(normalized_word, normalized_ocr_text, 0.50, debug=True)
+        word_match = find_best_word_match(
+            normalized_word, normalized_ocr_text, 0.50, debug=True
+        )
 
         # PESO ESPECIAL: Primeiro nome tem peso 4x maior (essencial!)
-        is_first_name = (i == 0)
+        is_first_name = i == 0
         weight = len(normalized_word)
 
         if is_first_name:
             weight = weight * 4  # Primeiro nome é 4x mais importante!
-            first_name_score = word_match['similarity']
+            first_name_score = word_match["similarity"]
 
         total_weight += weight
 
-        word_score = word_match['similarity']
+        word_score = word_match["similarity"]
         total_weighted_score += word_score * weight
 
-        word_results.append({
-            'original': original_word,
-            'normalized': normalized_word,
-            'similarity': word_score,
-            'matched': word_match['matched_text'],
-            'found': word_match['found'],
-            'weight': weight,
-            'is_first_name': is_first_name
-        })
+        word_results.append(
+            {
+                "original": original_word,
+                "normalized": normalized_word,
+                "similarity": word_score,
+                "matched": word_match["matched_text"],
+                "found": word_match["found"],
+                "weight": weight,
+                "is_first_name": is_first_name,
+            }
+        )
 
-        icon = '✅' if word_match['found'] else '❌'
+        icon = "✅" if word_match["found"] else "❌"
         confidence = word_score * 100
-        first_name_tag = ' 🌟 PRIMEIRO NOME (PESO 4x)' if is_first_name else ''
-        print(f"   {icon} \"{original_word}\" ({normalized_word}){first_name_tag}")
+        first_name_tag = " 🌟 PRIMEIRO NOME (PESO 4x)" if is_first_name else ""
+        print(f'   {icon} "{original_word}" ({normalized_word}){first_name_tag}')
         print(f"      Similaridade: {confidence:.1f}%")
         print(f"      Match: \"{word_match['matched_text'] or 'não encontrado'}\"")
         print(f"      Peso: {weight}")
@@ -971,21 +1046,29 @@ def find_name_in_text(expected_name: str, ocr_text: str, threshold: float = 0.70
     final_score = total_weighted_score / total_weight if total_weight > 0 else 0.0
 
     # Conta quantas palavras foram encontradas com similaridade >= 0.60
-    words_found_60 = len([w for w in word_results if w['similarity'] >= 0.60])
+    words_found_60 = len([w for w in word_results if w["similarity"] >= 0.60])
     percentage_words_found = words_found_60 / len(word_results) if word_results else 0.0
 
     # Separa primeiro nome das outras palavras
-    first_name_result = next((w for w in word_results if w['is_first_name']), None)
-    other_words = [w for w in word_results if not w['is_first_name']]
-    other_words_found = len([w for w in other_words if w['similarity'] >= 0.60])
-    percentage_other_words = other_words_found / len(other_words) if other_words else 0.0
+    first_name_result = next((w for w in word_results if w["is_first_name"]), None)
+    other_words = [w for w in word_results if not w["is_first_name"]]
+    other_words_found = len([w for w in other_words if w["similarity"] >= 0.60])
+    percentage_other_words = (
+        other_words_found / len(other_words) if other_words else 0.0
+    )
 
     print(f"\n{'─'*80}")
     print(f"📈 SCORE FINAL:")
     print(f"   Score ponderado: {final_score*100:.1f}%")
-    print(f"   Palavras encontradas (≥60%): {words_found_60}/{len(word_results)} ({percentage_words_found*100:.1f}%)")
-    print(f"   🌟 Primeiro nome: {first_name_score*100:.1f}% {'✅ ENCONTRADO' if first_name_score >= 0.70 else '❌ NÃO ENCONTRADO'}")
-    print(f"   📝 Outras palavras: {other_words_found}/{len(other_words)} ({percentage_other_words*100:.1f}%)")
+    print(
+        f"   Palavras encontradas (≥60%): {words_found_60}/{len(word_results)} ({percentage_words_found*100:.1f}%)"
+    )
+    print(
+        f"   🌟 Primeiro nome: {first_name_score*100:.1f}% {'✅ ENCONTRADO' if first_name_score >= 0.70 else '❌ NÃO ENCONTRADO'}"
+    )
+    print(
+        f"   📝 Outras palavras: {other_words_found}/{len(other_words)} ({percentage_other_words*100:.1f}%)"
+    )
     print(f"   Threshold necessário: {threshold*100:.1f}%")
     print(f"{'─'*80}\n")
 
@@ -999,7 +1082,7 @@ def find_name_in_text(expected_name: str, ocr_text: str, threshold: float = 0.70
 
     found = criterion1 or criterion2 or criterion3
 
-    matched_words = ' '.join([w['matched'] for w in word_results if w['found']])
+    matched_words = " ".join([w["matched"] for w in word_results if w["found"]])
 
     if found:
         print(f"✅ NOME ENCONTRADO!")
@@ -1008,43 +1091,59 @@ def find_name_in_text(expected_name: str, ocr_text: str, threshold: float = 0.70
 
         criteria = []
         if criterion1:
-            criteria.append(f"✓ score ponderado ({final_score*100:.1f}% ≥ {threshold*100:.0f}%)")
+            criteria.append(
+                f"✓ score ponderado ({final_score*100:.1f}% ≥ {threshold*100:.0f}%)"
+            )
         if criterion2:
-            criteria.append(f"✓ palavras encontradas ({percentage_words_found*100:.0f}% ≥ 70%)")
+            criteria.append(
+                f"✓ palavras encontradas ({percentage_words_found*100:.0f}% ≥ 70%)"
+            )
         if criterion3:
-            criteria.append(f"✓ 🌟 primeiro nome ({first_name_score*100:.1f}% ≥ 70%) + outras palavras ({percentage_other_words*100:.0f}% ≥ 50%)")
-        print(f"   Critério(s) atendido(s):\n      {chr(10).join(['      ' + c for c in criteria])}")
-        print(f"   Match: \"{matched_words}\"\n")
+            criteria.append(
+                f"✓ 🌟 primeiro nome ({first_name_score*100:.1f}% ≥ 70%) + outras palavras ({percentage_other_words*100:.0f}% ≥ 50%)"
+            )
+        print(
+            f"   Critério(s) atendido(s):\n      {chr(10).join(['      ' + c for c in criteria])}"
+        )
+        print(f'   Match: "{matched_words}"\n')
     else:
         print(f"❌ NOME NÃO ENCONTRADO")
         print(f"   Razões:")
         if not first_name_found:
-            print(f"      • Primeiro nome NÃO encontrado ({first_name_score*100:.1f}% < 70%) ❌")
+            print(
+                f"      • Primeiro nome NÃO encontrado ({first_name_score*100:.1f}% < 70%) ❌"
+            )
         elif not has_other_words:
-            print(f"      • Primeiro nome encontrado MAS poucas outras palavras ({percentage_other_words*100:.0f}% < 50%) ❌")
+            print(
+                f"      • Primeiro nome encontrado MAS poucas outras palavras ({percentage_other_words*100:.0f}% < 50%) ❌"
+            )
         if final_score < threshold:
-            print(f"      • Score ponderado baixo ({final_score*100:.1f}% < {threshold*100:.0f}%) ❌")
+            print(
+                f"      • Score ponderado baixo ({final_score*100:.1f}% < {threshold*100:.0f}%) ❌"
+            )
         if percentage_words_found < 0.70:
-            print(f"      • Poucas palavras encontradas ({percentage_words_found*100:.0f}% < 70%) ❌")
+            print(
+                f"      • Poucas palavras encontradas ({percentage_words_found*100:.0f}% < 70%) ❌"
+            )
         print()
 
     return {
-        'found': found,
-        'confidence': final_score,
-        'matched_text': matched_words,
-        'method': 'fuzzy_intelligent',
-        'details': word_results,
-        'stats': {
-            'total_words': len(word_results),
-            'words_found': words_found_60,
-            'percentage_found': percentage_words_found,
-            'weighted_score': final_score,
-            'first_name_score': first_name_score,
-            'first_name_found': first_name_found,
-            'other_words_total': len(other_words),
-            'other_words_found': other_words_found,
-            'other_words_percentage': percentage_other_words
-        }
+        "found": found,
+        "confidence": final_score,
+        "matched_text": matched_words,
+        "method": "fuzzy_intelligent",
+        "details": word_results,
+        "stats": {
+            "total_words": len(word_results),
+            "words_found": words_found_60,
+            "percentage_found": percentage_words_found,
+            "weighted_score": final_score,
+            "first_name_score": first_name_score,
+            "first_name_found": first_name_found,
+            "other_words_total": len(other_words),
+            "other_words_found": other_words_found,
+            "other_words_percentage": percentage_other_words,
+        },
     }
 
 
@@ -1052,9 +1151,9 @@ def extract_cpf(text: str) -> Optional[str]:
     """Extrai CPF do texto"""
     # Padrões: 123.456.789-01 ou 12345678901
     patterns = [
-        r'\b\d{3}\.\d{3}\.\d{3}-\d{2}\b',
-        r'\b\d{2}\.\d{3}\.\d{3}-\d{2}\b',
-        r'\b\d{11}\b'
+        r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b",
+        r"\b\d{2}\.\d{3}\.\d{3}-\d{2}\b",
+        r"\b\d{11}\b",
     ]
 
     for pattern in patterns:
@@ -1062,18 +1161,19 @@ def extract_cpf(text: str) -> Optional[str]:
         if match:
             cpf = match.group()
             # Verificar se tem 11 dígitos
-            nums = re.sub(r'\D', '', cpf)
+            nums = re.sub(r"\D", "", cpf)
             if len(nums) == 11:
                 return cpf
     return None
+
 
 def extract_rg(text: str) -> Optional[str]:
     """Extrai RG do texto"""
     # Padrões comuns: 12.345.678-9, 12345678-9, 08-055535083
     patterns = [
-        r'\b\d{2}\.\d{3}\.\d{3}-\d{1,2}\b',
-        r'\b\d{8,9}-\d{1,2}\b',
-        r'\b\d{2}-\d{9}\b'
+        r"\b\d{2}\.\d{3}\.\d{3}-\d{1,2}\b",
+        r"\b\d{8,9}-\d{1,2}\b",
+        r"\b\d{2}-\d{9}\b",
     ]
 
     for pattern in patterns:
@@ -1082,28 +1182,31 @@ def extract_rg(text: str) -> Optional[str]:
             return match.group()
     return None
 
+
 def extract_dates(text: str) -> Dict[str, Optional[str]]:
     """Extrai datas do texto (nascimento e expedição)"""
-    dates = {
-        'data_nascimento': None,
-        'data_expedicao': None
-    }
+    dates = {"data_nascimento": None, "data_expedicao": None}
 
     # Padrões de data: DD/MM/YYYY, DD-MM-YYYY, DD=MM=YYYY, DDMMYYYY
-    date_patterns = [
-        r'\b\d{2}[-/=\.]\d{2}[-/=\.]\d{4}\b',
-        r'\b\d{8}\b'
-    ]
+    date_patterns = [r"\b\d{2}[-/=\.]\d{2}[-/=\.]\d{4}\b", r"\b\d{8}\b"]
 
     # Procurar "DATA DE NASCIMENTO" ou "NASC" seguido de data
-    nasc_match = re.search(r'(?:DATA.*?NASC|NASC|DAT).*?(\d{2}[-/=\.]\d{2}[-/=\.]\d{4})', text, re.IGNORECASE)
+    nasc_match = re.search(
+        r"(?:DATA.*?NASC|NASC|DAT).*?(\d{2}[-/=\.]\d{2}[-/=\.]\d{4})",
+        text,
+        re.IGNORECASE,
+    )
     if nasc_match:
-        dates['data_nascimento'] = nasc_match.group(1)
+        dates["data_nascimento"] = nasc_match.group(1)
 
     # Procurar "DATA DE EXPEDIÇÃO" ou "EXPEDICAO" seguido de data
-    exp_match = re.search(r'(?:DATA.*?EXPEDI|EXPEDI[CÇ]).*?(\d{2}[-/=\.]\d{2}[-/=\.]\d{4})', text, re.IGNORECASE)
+    exp_match = re.search(
+        r"(?:DATA.*?EXPEDI|EXPEDI[CÇ]).*?(\d{2}[-/=\.]\d{2}[-/=\.]\d{4})",
+        text,
+        re.IGNORECASE,
+    )
     if exp_match:
-        dates['data_expedicao'] = exp_match.group(1)
+        dates["data_expedicao"] = exp_match.group(1)
 
     # Se não encontrou com contexto, pegar as duas últimas datas do documento
     all_dates = []
@@ -1111,7 +1214,7 @@ def extract_dates(text: str) -> Dict[str, Optional[str]]:
         matches = re.findall(pattern, text)
         for match in matches:
             # Converter para formato padrão
-            if '-' in match or '/' in match or '=' in match or '.' in match:
+            if "-" in match or "/" in match or "=" in match or "." in match:
                 all_dates.append(match)
             elif len(match) == 8:  # DDMMYYYY
                 formatted = f"{match[:2]}/{match[2:4]}/{match[4:]}"
@@ -1119,29 +1222,66 @@ def extract_dates(text: str) -> Dict[str, Optional[str]]:
 
     # Se encontrou datas mas não identificou contexto
     if all_dates:
-        if not dates['data_nascimento'] and len(all_dates) >= 1:
-            dates['data_nascimento'] = all_dates[0]
-        if not dates['data_expedicao'] and len(all_dates) >= 2:
-            dates['data_expedicao'] = all_dates[-1]
+        if not dates["data_nascimento"] and len(all_dates) >= 1:
+            dates["data_nascimento"] = all_dates[0]
+        if not dates["data_expedicao"] and len(all_dates) >= 2:
+            dates["data_expedicao"] = all_dates[-1]
 
     return dates
 
+
 def extract_names(text: str) -> Dict[str, Optional[str]]:
     """Extrai nomes (titular, mãe, pai) do texto"""
-    names = {
-        'nome': None,
-        'mae': None,
-        'pai': None
-    }
+    names = {"nome": None, "mae": None, "pai": None}
 
     # Palavras comuns que não são nomes
-    stopwords = {'DE', 'DA', 'DO', 'DOS', 'DAS', 'E', 'O', 'A', 'OS', 'AS',
-                 'REPUBLICA', 'FEDERATIVA', 'BRASIL', 'ESTADO', 'CARTEIRA',
-                 'IDENTIDADE', 'RG', 'CPF', 'DATA', 'NASCIMENTO', 'EXPEDICAO',
-                 'ASSINATURA', 'DIRETOR', 'DIRETORA', 'LEI', 'VALIDA', 'TODO',
-                 'TERRITORIO', 'NACIONAL', 'SECRETARIA', 'SEGURANCA', 'PUBLICA',
-                 'POLICIA', 'DELEGADO', 'SSP', 'RGD', 'NOME', 'FILIACAO', 'MAE',
-                 'PAI', 'REGISTRO', 'GERAL', 'DOC', 'ORIGEM', 'NATURALIDADE'}
+    stopwords = {
+        "DE",
+        "DA",
+        "DO",
+        "DOS",
+        "DAS",
+        "E",
+        "O",
+        "A",
+        "OS",
+        "AS",
+        "REPUBLICA",
+        "FEDERATIVA",
+        "BRASIL",
+        "ESTADO",
+        "CARTEIRA",
+        "IDENTIDADE",
+        "RG",
+        "CPF",
+        "DATA",
+        "NASCIMENTO",
+        "EXPEDICAO",
+        "ASSINATURA",
+        "DIRETOR",
+        "DIRETORA",
+        "LEI",
+        "VALIDA",
+        "TODO",
+        "TERRITORIO",
+        "NACIONAL",
+        "SECRETARIA",
+        "SEGURANCA",
+        "PUBLICA",
+        "POLICIA",
+        "DELEGADO",
+        "SSP",
+        "RGD",
+        "NOME",
+        "FILIACAO",
+        "MAE",
+        "PAI",
+        "REGISTRO",
+        "GERAL",
+        "DOC",
+        "ORIGEM",
+        "NATURALIDADE",
+    }
 
     # Dividir texto em palavras
     lines = text.split()
@@ -1152,13 +1292,20 @@ def extract_names(text: str) -> Dict[str, Optional[str]]:
     while i < len(lines):
         word = lines[i]
         # Se encontrar palavra em maiúsculas (possível nome)
-        if word.isupper() and len(word) > 2 and word.isalpha() and word not in stopwords:
+        if (
+            word.isupper()
+            and len(word) > 2
+            and word.isalpha()
+            and word not in stopwords
+        ):
             name_parts = [word]
             # Continuar pegando palavras em maiúsculas
             j = i + 1
             while j < len(lines) and j < i + 6:  # Limite de 6 palavras para um nome
                 next_word = lines[j]
-                if next_word.isupper() and (next_word.isalpha() or next_word in {'DE', 'DA', 'DO', 'DOS', 'DAS'}):
+                if next_word.isupper() and (
+                    next_word.isalpha() or next_word in {"DE", "DA", "DO", "DOS", "DAS"}
+                ):
                     if len(next_word) > 1:
                         name_parts.append(next_word)
                     j += 1
@@ -1166,9 +1313,11 @@ def extract_names(text: str) -> Dict[str, Optional[str]]:
                     break
 
             # Se encontrou pelo menos 2 palavras (ignorando preposições), pode ser um nome
-            actual_words = [w for w in name_parts if w not in {'DE', 'DA', 'DO', 'DOS', 'DAS'}]
+            actual_words = [
+                w for w in name_parts if w not in {"DE", "DA", "DO", "DOS", "DAS"}
+            ]
             if len(actual_words) >= 2:
-                full_name = ' '.join(name_parts)
+                full_name = " ".join(name_parts)
                 potential_names.append(full_name)
                 i = j
             else:
@@ -1182,55 +1331,88 @@ def extract_names(text: str) -> Dict[str, Optional[str]]:
     # Atribuir nomes baseado em quantidade e posição
     if len(valid_names) >= 3:
         # Último nome completo geralmente é o titular
-        names['nome'] = valid_names[-1]
+        names["nome"] = valid_names[-1]
         # Penúltimo e antepenúltimo são mãe e pai
-        names['mae'] = valid_names[-3]
-        names['pai'] = valid_names[-2]
+        names["mae"] = valid_names[-3]
+        names["pai"] = valid_names[-2]
     elif len(valid_names) >= 2:
-        names['nome'] = valid_names[-1]
-        names['mae'] = valid_names[-2]
+        names["nome"] = valid_names[-1]
+        names["mae"] = valid_names[-2]
     elif len(valid_names) >= 1:
-        names['nome'] = valid_names[-1]
+        names["nome"] = valid_names[-1]
 
     return names
+
 
 def extract_location(text: str) -> Optional[str]:
     """Extrai localização/estado do texto"""
     # Estados brasileiros (siglas e nomes)
-    estados = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
-               'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-               'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
+    estados = [
+        "AC",
+        "AL",
+        "AP",
+        "AM",
+        "BA",
+        "CE",
+        "DF",
+        "ES",
+        "GO",
+        "MA",
+        "MT",
+        "MS",
+        "MG",
+        "PA",
+        "PB",
+        "PR",
+        "PE",
+        "PI",
+        "RJ",
+        "RN",
+        "RS",
+        "RO",
+        "RR",
+        "SC",
+        "SP",
+        "SE",
+        "TO",
+    ]
 
     for estado in estados:
-        if re.search(rf'\b{estado}\b', text):
+        if re.search(rf"\b{estado}\b", text):
             # Tentar pegar cidade também
-            city_match = re.search(rf'(\w+(?:\s+\w+)?)\s+{estado}', text)
+            city_match = re.search(rf"(\w+(?:\s+\w+)?)\s+{estado}", text)
             if city_match:
                 return f"{city_match.group(1)} {estado}"
             return estado
 
     return None
 
+
 def extract_document_type(text: str) -> Optional[str]:
     """Identifica tipo de documento"""
     text_upper = text.upper()
 
-    if 'CARTEIRA DE IDENTIDADE' in text_upper or 'RG' in text_upper:
-        return 'RG - Carteira de Identidade'
-    elif 'CNH' in text_upper or 'HABILITACAO' in text_upper or 'DRIVER LICENSE' in text_upper:
-        return 'CNH - Carteira Nacional de Habilitação'
-    elif 'CTPS' in text_upper or 'TRABALHO' in text_upper:
-        return 'CTPS - Carteira de Trabalho'
+    if "CARTEIRA DE IDENTIDADE" in text_upper or "RG" in text_upper:
+        return "RG - Carteira de Identidade"
+    elif (
+        "CNH" in text_upper
+        or "HABILITACAO" in text_upper
+        or "DRIVER LICENSE" in text_upper
+    ):
+        return "CNH - Carteira Nacional de Habilitação"
+    elif "CTPS" in text_upper or "TRABALHO" in text_upper:
+        return "CTPS - Carteira de Trabalho"
 
-    return 'Documento de Identificação'
+    return "Documento de Identificação"
+
 
 def extract_fields_from_ocr(text: str) -> Dict[str, Any]:
     """Extrai campos estruturados do texto do OCR"""
     fields = {
-        'documento_tipo': extract_document_type(text),
-        'cpf': extract_cpf(text),
-        'rg': extract_rg(text),
-        'local': extract_location(text)
+        "documento_tipo": extract_document_type(text),
+        "cpf": extract_cpf(text),
+        "rg": extract_rg(text),
+        "local": extract_location(text),
     }
 
     # Extrair datas
@@ -1243,6 +1425,7 @@ def extract_fields_from_ocr(text: str) -> Dict[str, Any]:
 
     return fields
 
+
 # Endpoints
 @app.get("/")
 async def root():
@@ -1253,15 +1436,17 @@ async def root():
             "/ocr": "POST - Upload de arquivo para OCR",
             "/ocr/base64": "POST - OCR de imagem em base64",
             "/ocr/extract": "POST - Extração de texto de URLs",
-            "/health": "GET - Health check"
-        }
+            "/health": "GET - Health check",
+        },
     }
+
 
 @app.get("/health")
 @app.post("/health")
 async def health():
     """Health check endpoint (GET e POST) para SaladCloud"""
     return {"status": "ok", "service": "paddleocr-api"}
+
 
 @app.post("/ocr")
 async def ocr_endpoint(file: UploadFile = File(...)):
@@ -1278,10 +1463,13 @@ async def ocr_endpoint(file: UploadFile = File(...)):
     # Retornar no formato compatível (simular lines com texto completo)
     if text:
         # Dividir em linhas e retornar como antes
-        lines = [{"text": line, "score": 1.0} for line in text.split('\n') if line.strip()]
+        lines = [
+            {"text": line, "score": 1.0} for line in text.split("\n") if line.strip()
+        ]
         return {"lines": lines}
     else:
         return {"lines": []}
+
 
 @app.post("/ocr/base64")
 async def ocr_base64_endpoint(request: OCRBase64Request):
@@ -1313,8 +1501,8 @@ async def ocr_base64_endpoint(request: OCRBase64Request):
         try:
             # Remover prefixo data:image se existir
             image_b64 = request.image
-            if ',' in image_b64:
-                image_b64 = image_b64.split(',')[1]
+            if "," in image_b64:
+                image_b64 = image_b64.split(",")[1]
 
             image_bytes = base64.b64decode(image_b64)
         except Exception as e:
@@ -1343,13 +1531,13 @@ async def ocr_base64_endpoint(request: OCRBase64Request):
 
             # Se solicitou extração de campos
             if request.extract_fields:
-                combined_text = ' '.join(all_text)
+                combined_text = " ".join(all_text)
                 extracted_fields = extract_fields_from_ocr(combined_text)
 
                 return {
                     "ocrText": combined_text,
                     "extractedFields": extracted_fields,
-                    "lines": lines
+                    "lines": lines,
                 }
             else:
                 return {"lines": lines}
@@ -1362,6 +1550,7 @@ async def ocr_base64_endpoint(request: OCRBase64Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro no processamento: {str(e)}")
+
 
 def download_and_prepare(url: str, index: int, total: int) -> tuple:
     """
@@ -1379,21 +1568,26 @@ def download_and_prepare(url: str, index: int, total: int) -> tuple:
             # Extrair texto nativo do PDF
             native_text = extract_text_from_pdf(content_bytes)
             if native_text:
-                print(f"PDF {index+1}: texto nativo extraído ({len(native_text)} caracteres)")
+                print(
+                    f"PDF {index+1}: texto nativo extraído ({len(native_text)} caracteres)"
+                )
 
             # Converter PDF em imagens para OCR
             page_images = convert_pdf_to_images(content_bytes)
             print(f"PDF {index+1}: {len(page_images)} página(s) convertidas para OCR")
 
-            return (index, {'images': page_images, 'native_text': native_text})
+            return (index, {"images": page_images, "native_text": native_text})
         else:
             # Imagem normal - retornar como lista
-            return (index, {'images': [content_bytes], 'native_text': ''})
+            return (index, {"images": [content_bytes], "native_text": ""})
     except Exception as e:
         print(f"Erro ao baixar/preparar URL {url}: {e}")
-        return (index, {'images': [], 'native_text': ''})
+        return (index, {"images": [], "native_text": ""})
 
-async def process_single_doc_async(index: int, doc_data: dict, expected_name: str = None) -> tuple:
+
+async def process_single_doc_async(
+    index: int, doc_data: dict, expected_name: str = None
+) -> tuple:
     """
     Processa um único documento de forma assíncrona
     doc_data = {'images': [bytes...], 'native_text': str}
@@ -1401,8 +1595,8 @@ async def process_single_doc_async(index: int, doc_data: dict, expected_name: st
     Retorna texto combinado: texto nativo + OCR
     """
     try:
-        image_list = doc_data.get('images', [])
-        native_text = doc_data.get('native_text', '')
+        image_list = doc_data.get("images", [])
+        native_text = doc_data.get("native_text", "")
 
         # Processar OCR das imagens
         print(f"Fazendo OCR do documento {index+1}...")
@@ -1417,12 +1611,14 @@ async def process_single_doc_async(index: int, doc_data: dict, expected_name: st
             # Passar expected_name para perform_ocr
             page_text = await loop.run_in_executor(
                 None,
-                lambda img=image_bytes, name=expected_name: perform_ocr(img, expected_name=name)
+                lambda img=image_bytes, name=expected_name: perform_ocr(
+                    img, expected_name=name
+                ),
             )
             if page_text:
                 ocr_texts.append(page_text)
 
-        ocr_combined = ' '.join(ocr_texts)
+        ocr_combined = " ".join(ocr_texts)
 
         # Combinar texto nativo + OCR
         all_texts = []
@@ -1433,9 +1629,11 @@ async def process_single_doc_async(index: int, doc_data: dict, expected_name: st
             all_texts.append(ocr_combined)
             print(f"Documento {index+1}: OCR ({len(ocr_combined)} chars)")
 
-        combined = ' '.join(all_texts)
+        combined = " ".join(all_texts)
         if combined:
-            print(f"Documento {index+1} concluído: total {len(combined)} caracteres (nativo + OCR)")
+            print(
+                f"Documento {index+1} concluído: total {len(combined)} caracteres (nativo + OCR)"
+            )
         else:
             print(f"Documento {index+1}: nenhum texto extraído")
 
@@ -1444,7 +1642,10 @@ async def process_single_doc_async(index: int, doc_data: dict, expected_name: st
         print(f"Erro ao processar documento {index+1}: {e}")
         return (index, "")
 
-async def process_ocr_parallel(prepared_images: List[tuple], expected_name: str = None) -> str:
+
+async def process_ocr_parallel(
+    prepared_images: List[tuple], expected_name: str = None
+) -> str:
     """
     Processa OCR de forma PARALELA - múltiplas imagens simultaneamente!
     prepared_images: lista de (index, dict com 'images' e 'native_text')
@@ -1452,7 +1653,9 @@ async def process_ocr_parallel(prepared_images: List[tuple], expected_name: str 
     Combina texto nativo + OCR para cada documento
     """
     print(f"Processando {len(prepared_images)} documentos em PARALELO...")
-    print(f"DEBUG: Documentos a processar: {[(idx, len(doc['images'])) for idx, doc in prepared_images]}")
+    print(
+        f"DEBUG: Documentos a processar: {[(idx, len(doc['images'])) for idx, doc in prepared_images]}"
+    )
 
     # Criar tasks para processar todos os documentos simultaneamente
     tasks = [
@@ -1472,12 +1675,17 @@ async def process_ocr_parallel(prepared_images: List[tuple], expected_name: str 
     # Ordenar por index e juntar textos
     all_texts = [text for _, text in sorted(results) if text]
 
-    final_text = ' '.join(all_texts)
-    print(f"DEBUG: Texto final: {len(final_text)} chars (de {len(all_texts)} documentos)")
+    final_text = " ".join(all_texts)
+    print(
+        f"DEBUG: Texto final: {len(final_text)} chars (de {len(all_texts)} documentos)"
+    )
 
     return final_text
 
-def process_ocr_sequential(prepared_images: List[tuple], expected_name: str = None) -> str:
+
+def process_ocr_sequential(
+    prepared_images: List[tuple], expected_name: str = None
+) -> str:
     """
     Processa OCR de forma SEQUENCIAL para evitar race conditions
     prepared_images: lista de (index, [image_bytes])
@@ -1498,7 +1706,7 @@ def process_ocr_sequential(prepared_images: List[tuple], expected_name: str = No
                 if page_text:
                     doc_texts.append(page_text)
 
-            combined = ' '.join(doc_texts)
+            combined = " ".join(doc_texts)
             if combined:
                 all_texts.append(combined)
                 print(f"OCR {index+1} concluído ({len(combined)} caracteres)")
@@ -1508,7 +1716,8 @@ def process_ocr_sequential(prepared_images: List[tuple], expected_name: str = No
         except Exception as e:
             print(f"Erro ao fazer OCR do documento {index+1}: {e}")
 
-    return ' '.join(all_texts)
+    return " ".join(all_texts)
+
 
 @app.post("/ocr/extract")
 async def ocr_extract_endpoint(request: OCRRequest):
@@ -1571,7 +1780,9 @@ async def ocr_extract_endpoint(request: OCRRequest):
         duplicates_by_url = total_urls - unique_url_count
 
         if duplicates_by_url > 0:
-            print(f"Deduplicação URL: {total_urls} URLs → {unique_url_count} únicas ({duplicates_by_url} duplicadas removidas)")
+            print(
+                f"Deduplicação URL: {total_urls} URLs → {unique_url_count} únicas ({duplicates_by_url} duplicadas removidas)"
+            )
 
         # FASE 1: Baixar e preparar imagens/PDFs EM PARALELO
         loop = asyncio.get_event_loop()
@@ -1579,11 +1790,7 @@ async def ocr_extract_endpoint(request: OCRRequest):
             # Submete todas as tarefas de download em paralelo
             futures = [
                 loop.run_in_executor(
-                    executor,
-                    download_and_prepare,
-                    url,
-                    idx,
-                    unique_url_count
+                    executor, download_and_prepare, url, idx, unique_url_count
                 )
                 for idx, url in unique_urls
             ]
@@ -1603,8 +1810,8 @@ async def ocr_extract_endpoint(request: OCRRequest):
         unique_image_count = 0
 
         for idx, doc_data in prepared_images:
-            image_list = doc_data.get('images', [])
-            native_text = doc_data.get('native_text', '')
+            image_list = doc_data.get("images", [])
+            native_text = doc_data.get("native_text", "")
             total_images_downloaded += len(image_list)
 
             # Filtrar apenas imagens únicas deste documento
@@ -1618,44 +1825,77 @@ async def ocr_extract_endpoint(request: OCRRequest):
                     unique_images_in_doc.append(img_bytes)
                     unique_image_count += 1
                 else:
-                    print(f"Imagem duplicada detectada (hash: {img_hash[:8]}...) - pulando")
+                    print(
+                        f"Imagem duplicada detectada (hash: {img_hash[:8]}...) - pulando"
+                    )
 
             # Se há imagens únicas neste documento, adicionar à lista
             if unique_images_in_doc:
-                deduplicated_docs.append((idx, {
-                    'images': unique_images_in_doc,
-                    'native_text': native_text
-                }))
+                deduplicated_docs.append(
+                    (idx, {"images": unique_images_in_doc, "native_text": native_text})
+                )
 
         duplicates_by_hash = total_images_downloaded - unique_image_count
 
         if duplicates_by_hash > 0:
-            print(f"Deduplicação Hash: {total_images_downloaded} imagens → {unique_image_count} únicas ({duplicates_by_hash} duplicadas removidas)")
+            print(
+                f"Deduplicação Hash: {total_images_downloaded} imagens → {unique_image_count} únicas ({duplicates_by_hash} duplicadas removidas)"
+            )
 
         # Usar documentos deduplicados
         unique_images = deduplicated_docs
 
         # FASE 3: Processar OCR EM PARALELO apenas das imagens únicas
         # Passar nome esperado para validação de fallback
-        expected_name = request.nome if hasattr(request, 'nome') else None
-        combined_text = await process_ocr_parallel(unique_images, expected_name=expected_name)
+        expected_name = request.nome if hasattr(request, "nome") else None
+        combined_text = await process_ocr_parallel(
+            unique_images, expected_name=expected_name
+        )
 
-        # Extrair campos estruturados do texto
-        extracted_fields = extract_fields_from_ocr(combined_text)
+        # # Extrair campos estruturados do texto
+        # extracted_fields = extract_fields_from_ocr(combined_text)
 
         return {
             "ocrText": combined_text,
-            "extractedFields": extracted_fields,
+            # "extractedFields": extracted_fields,
             "status": "OK",
             "stats": {
                 "total_urls": total_urls,
                 "unique_urls": unique_url_count,
                 "unique_images": unique_image_count,
-                "duplicates_removed": duplicates_by_url + duplicates_by_hash
-            }
+                "duplicates_removed": duplicates_by_url + duplicates_by_hash,
+            },
         }
 
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro no processamento: {str(e)}")
+
+
+salad_machine_id = os.getenv("SALAD_MACHINE_ID", "localhost")
+
+
+@app.get("/hello")
+async def hello_world():
+    return {"message": "Hello World", "salad_machine_id": salad_machine_id}
+
+
+@app.get("/started")
+async def started():
+    return {"message": "Started", "salad_machine_id": salad_machine_id}
+
+
+@app.get("/ready")
+async def ready():
+    return {"message": "Ready", "salad_machine_id": salad_machine_id}
+
+
+@app.get("/live")
+async def live():
+    return {"message": "Live", "salad_machine_id": salad_machine_id}
+
+
+@app.get("/health")
+async def health():
+    return {"message": "Healthy", "salad_machine_id": salad_machine_id}
