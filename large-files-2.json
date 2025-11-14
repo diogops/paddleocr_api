@@ -1,0 +1,302 @@
+﻿[
+    {
+        "Index":  1,
+        "Tamanho (GB)":  0.64,
+        "Tamanho (MB)":  651.42,
+        "Caminho":  "C:\\Program Files\\Docker\\Docker\\resources\\docker-desktop.iso"
+    },
+    {
+        "Index":  2,
+        "Tamanho (GB)":  0.58,
+        "Tamanho (MB)":  598.03,
+        "Caminho":  "C:\\Program Files\\Docker\\Docker\\resources\\wsl\\docker-wsl-cli.iso"
+    },
+    {
+        "Index":  3,
+        "Tamanho (GB)":  0.52,
+        "Tamanho (MB)":  528.02,
+        "Caminho":  "C:\\SETARem\\db\\SETARem.fdb"
+    },
+    {
+        "Index":  4,
+        "Tamanho (GB)":  0.41,
+        "Tamanho (MB)":  416.94,
+        "Caminho":  "C:\\Program Files (x86)\\Google\\GoogleUpdater\\crx_cache\\ce879a27faf33737b2f87aac29a80e88d4d85e88a9ca1bbf03c0f6612fc383ba"
+    },
+    {
+        "Index":  5,
+        "Tamanho (GB)":  0.4,
+        "Tamanho (MB)":  410.71,
+        "Caminho":  "C:\\Program Files\\Google\\Chrome\\Application\\141.0.7390.123\\Installer\\CHROME.7Z"
+    },
+    {
+        "Index":  6,
+        "Tamanho (GB)":  0.38,
+        "Tamanho (MB)":  388.43,
+        "Caminho":  "C:\\Program Files\\WSL\\system.vhd"
+    },
+    {
+        "Index":  7,
+        "Tamanho (GB)":  0.32,
+        "Tamanho (MB)":  325.34,
+        "Caminho":  "C:\\Program Files (x86)\\Google\\GoogleUpdater\\crx_cache\\779043156e3e1d7ae6f04d0ccd84d9146a7a5c8dbe5be95a82f9cc622cd4e949"
+    },
+    {
+        "Index":  8,
+        "Tamanho (GB)":  0.28,
+        "Tamanho (MB)":  287.75,
+        "Caminho":  "C:\\Program Files (x86)\\Microsoft\\EdgeCore\\142.0.3595.53\\msedge.dll"
+    },
+    {
+        "Index":  9,
+        "Tamanho (GB)":  0.28,
+        "Tamanho (MB)":  287.75,
+        "Caminho":  "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\142.0.3595.53\\msedge.dll"
+    },
+    {
+        "Index":  10,
+        "Tamanho (GB)":  0.28,
+        "Tamanho (MB)":  287.75,
+        "Caminho":  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\142.0.3595.53\\msedge.dll"
+    },
+    {
+        "Index":  11,
+        "Tamanho (GB)":  0.28,
+        "Tamanho (MB)":  286.2,
+        "Caminho":  "C:\\Program Files (x86)\\Microsoft\\EdgeCore\\141.0.3537.99\\msedge.dll"
+    },
+    {
+        "Index":  12,
+        "Tamanho (GB)":  0.28,
+        "Tamanho (MB)":  286.2,
+        "Caminho":  "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\141.0.3537.99\\msedge.dll"
+    },
+    {
+        "Index":  13,
+        "Tamanho (GB)":  0.27,
+        "Tamanho (MB)":  273.12,
+        "Caminho":  "C:\\Windows\\System32\\Microsoft-Edge-WebView\\msedge.dll"
+    },
+    {
+        "Index":  14,
+        "Tamanho (GB)":  0.27,
+        "Tamanho (MB)":  273.12,
+        "Caminho":  "C:\\Windows\\WinSxS\\amd64_microsoft-edge-webview_31bf3856ad364e35_10.0.26100.6899_none_2e8cf9973add6927\\msedge.dll"
+    },
+    {
+        "Index":  15,
+        "Tamanho (GB)":  0.27,
+        "Tamanho (MB)":  273.02,
+        "Caminho":  "C:\\Windows\\WinSxS\\amd64_microsoft-edge-webview_31bf3856ad364e35_10.0.26100.6584_none_2eacdaf93ac57bd8\\msedge.dll"
+    },
+    {
+        "Index":  16,
+        "Tamanho (GB)":  0.25,
+        "Tamanho (MB)":  251.35,
+        "Caminho":  "C:\\Windows\\WinSxS\\amd64_microsoft-edge-webview_31bf3856ad364e35_10.0.26100.1_none_8fe1c356f34a19ca\\msedge.dll"
+    },
+    {
+        "Index":  17,
+        "Tamanho (GB)":  0.24,
+        "Tamanho (MB)":  250.1,
+        "Caminho":  "C:\\Program Files\\Google\\Chrome\\Application\\141.0.7390.123\\chrome.dll"
+    },
+    {
+        "Index":  18,
+        "Tamanho (GB)":  0.23,
+        "Tamanho (MB)":  231.61,
+        "Caminho":  "C:\\Users\\User\\.codeium\\ws-browser\\chromium-1155\\chrome-win\\chrome.dll"
+    },
+    {
+        "Index":  19,
+        "Tamanho (GB)":  0.21,
+        "Tamanho (MB)":  211.92,
+        "Caminho":  "C:\\Users\\User\\.vscode\\extensions\\ms-azuretools.vscode-azure-github-copilot-1.0.24-win32-x64\\dist\\node_modules\\aidriver.win-x64\\AIServiceLocalPackage.exe"
+    },
+    {
+        "Index":  20,
+        "Tamanho (GB)":  0.2,
+        "Tamanho (MB)":  206.08,
+        "Caminho":  "C:\\Users\\User\\OneDrive\\Pessoal\\Poker\\PokerTracker\\Backup\\bkp_PokerTracker.zip"
+    },
+    {
+        "Index":  21,
+        "Tamanho (GB)":  0.2,
+        "Tamanho (MB)":  204.6,
+        "Caminho":  "C:\\Windows\\System32\\MRT.exe"
+    },
+    {
+        "Index":  22,
+        "Tamanho (GB)":  0.2,
+        "Tamanho (MB)":  201.84,
+        "Caminho":  "C:\\Program Files\\Google\\Drive File Stream\\116.0.6.0\\libcef.dll"
+    },
+    {
+        "Index":  23,
+        "Tamanho (GB)":  0.19,
+        "Tamanho (MB)":  196.43,
+        "Caminho":  "C:\\Program Files\\Docker\\Docker\\frontend\\Docker Desktop.exe"
+    },
+    {
+        "Index":  24,
+        "Tamanho (GB)":  0.19,
+        "Tamanho (MB)":  194.9,
+        "Caminho":  "C:\\Windows\\System32\\DriverStore\\FileRepository\\wavesapo12de.inf_amd64_f4d6230909497f9a\\NNResources64.dll"
+    },
+    {
+        "Index":  25,
+        "Tamanho (GB)":  0.18,
+        "Tamanho (MB)":  187.36,
+        "Caminho":  "C:\\Users\\User\\.codeium\\database\\9c0694567290725d9dcba14ade58e297\\3\\MODEL_EMBED_6591\\embedding_database.sqlite"
+    },
+    {
+        "Index":  26,
+        "Tamanho (GB)":  0.18,
+        "Tamanho (MB)":  181.51,
+        "Caminho":  "C:\\Users\\User\\.cursor\\extensions\\codeium.codeium-1.48.2\\dist\\e03af6ebc40b844314d448f947c80b636d093049\\language_server_windows_x64.exe"
+    },
+    {
+        "Index":  27,
+        "Tamanho (GB)":  0.18,
+        "Tamanho (MB)":  181.51,
+        "Caminho":  "C:\\Users\\User\\.vscode\\extensions\\codeium.codeium-1.48.2\\dist\\e03af6ebc40b844314d448f947c80b636d093049\\language_server_windows_x64.exe"
+    },
+    {
+        "Index":  28,
+        "Tamanho (GB)":  0.18,
+        "Tamanho (MB)":  179.67,
+        "Caminho":  "C:\\Program Files\\Common Files\\Adobe\\Acrobat\\Setup Files\\{AC76BA86-1033-FFFF-7760-BC15014EA700}\\Core.cab"
+    },
+    {
+        "Index":  29,
+        "Tamanho (GB)":  0.16,
+        "Tamanho (MB)":  168.44,
+        "Caminho":  "C:\\Program Files\\Adobe\\Acrobat DC\\Acrobat\\AcroCEF\\libcef.dll"
+    },
+    {
+        "Index":  30,
+        "Tamanho (GB)":  0.16,
+        "Tamanho (MB)":  168.44,
+        "Caminho":  "C:\\Program Files\\Adobe\\Acrobat DC\\Acrobat\\acrocef_1\\libcef.dll"
+    },
+    {
+        "Index":  31,
+        "Tamanho (GB)":  0.16,
+        "Tamanho (MB)":  166.09,
+        "Caminho":  "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\libcef.dll"
+    },
+    {
+        "Index":  32,
+        "Tamanho (GB)":  0.16,
+        "Tamanho (MB)":  163.86,
+        "Caminho":  "C:\\Users\\User\\.codeium\\ws-browser\\chromium_headless_shell-1155\\chrome-win\\headless_shell.exe"
+    },
+    {
+        "Index":  33,
+        "Tamanho (GB)":  0.15,
+        "Tamanho (MB)":  156.98,
+        "Caminho":  "C:\\Windows\\System32\\DriverStore\\FileRepository\\iigd_dch.inf_amd64_76eafce1f9f134b8\\libopencl-clang2.so.14"
+    },
+    {
+        "Index":  34,
+        "Tamanho (GB)":  0.14,
+        "Tamanho (MB)":  142.83,
+        "Caminho":  "C:\\Windows\\System32\\DriverStore\\FileRepository\\iigd_dch.inf_amd64_76eafce1f9f134b8\\opencl-clang264.dll"
+    },
+    {
+        "Index":  35,
+        "Tamanho (GB)":  0.13,
+        "Tamanho (MB)":  137.52,
+        "Caminho":  "C:\\Program Files\\LibreOffice\\program\\mergedlo.dll"
+    },
+    {
+        "Index":  36,
+        "Tamanho (GB)":  0.13,
+        "Tamanho (MB)":  137.03,
+        "Caminho":  "C:\\Program Files\\Mozilla Firefox\\xul.dll"
+    },
+    {
+        "Index":  37,
+        "Tamanho (GB)":  0.12,
+        "Tamanho (MB)":  126.77,
+        "Caminho":  "C:\\Program Files\\Common Files\\Adobe\\Acrobat\\Setup Files\\{AC76BA86-1033-FFFF-7760-BC15014EA700}\\Optional.cab"
+    },
+    {
+        "Index":  38,
+        "Tamanho (GB)":  0.12,
+        "Tamanho (MB)":  125.72,
+        "Caminho":  "C:\\Users\\User\\OneDrive\\Desktop\\Temp\\Casa -Hidrolandia\\Casa\\Contrato\\Contrato assinado.rar"
+    },
+    {
+        "Index":  39,
+        "Tamanho (GB)":  0.12,
+        "Tamanho (MB)":  123.3,
+        "Caminho":  "C:\\Program Files\\Docker\\Docker\\resources\\cli-plugins\\docker-scout.exe"
+    },
+    {
+        "Index":  40,
+        "Tamanho (GB)":  0.12,
+        "Tamanho (MB)":  123.3,
+        "Caminho":  "C:\\Program Files\\Docker\\cli-plugins\\docker-scout.exe"
+    },
+    {
+        "Index":  41,
+        "Tamanho (GB)":  0.12,
+        "Tamanho (MB)":  122.34,
+        "Caminho":  "C:\\Program Files\\Common Files\\Adobe\\Acrobat\\Setup Files\\{AC76BA86-1033-FFFF-7760-BC15014EA700}\\Intermediate.cab"
+    },
+    {
+        "Index":  42,
+        "Tamanho (GB)":  0.11,
+        "Tamanho (MB)":  116.82,
+        "Caminho":  "C:\\Windows\\System32\\DriverStore\\FileRepository\\iigd_dch.inf_amd64_76eafce1f9f134b8\\opencl-clang232.dll"
+    },
+    {
+        "Index":  43,
+        "Tamanho (GB)":  0.11,
+        "Tamanho (MB)":  111.44,
+        "Caminho":  "C:\\Program Files\\Docker\\Docker\\resources\\com.docker.backend.exe"
+    },
+    {
+        "Index":  44,
+        "Tamanho (GB)":  0.11,
+        "Tamanho (MB)":  110.26,
+        "Caminho":  "C:\\Program Files\\Common Files\\Adobe\\Acrobat\\Setup Files\\{AC76BA86-1033-FFFF-7760-BC15014EA700}\\Languages.cab"
+    },
+    {
+        "Index":  45,
+        "Tamanho (GB)":  0.1,
+        "Tamanho (MB)":  102.22,
+        "Caminho":  "C:\\Windows\\System32\\DriverStore\\FileRepository\\iigd_dch.inf_amd64_76eafce1f9f134b8\\igxess2.dll"
+    },
+    {
+        "Index":  46,
+        "Tamanho (GB)":  0.1,
+        "Tamanho (MB)":  101.98,
+        "Caminho":  "C:\\Users\\User\\OneDrive\\Imagens\\Importações da câmera\\2015-12-15\\MOV02337.AVI"
+    },
+    {
+        "Index":  47,
+        "Tamanho (GB)":  0.1,
+        "Tamanho (MB)":  100.03,
+        "Caminho":  "C:\\Users\\User\\OneDrive\\Imagens\\Importações da câmera\\2016-01-02\\Slade   Hear me callin\u0027[1].wmv"
+    },
+    {
+        "Index":  48,
+        "Tamanho (GB)":  0.1,
+        "Tamanho (MB)":  97.79,
+        "Caminho":  "C:\\Users\\User\\OneDrive\\Imagens\\Importações da câmera\\2016-01-02\\Slade   Gudbuy T\u0027Jane1972.wmv"
+    },
+    {
+        "Index":  49,
+        "Tamanho (GB)":  0.09,
+        "Tamanho (MB)":  95.36,
+        "Caminho":  "C:\\Users\\User\\OneDrive\\Imagens\\Importações da câmera\\2015-12-15\\MOV02346.AVI"
+    },
+    {
+        "Index":  50,
+        "Tamanho (GB)":  0.09,
+        "Tamanho (MB)":  94,
+        "Caminho":  "C:\\Windows\\System32\\catroot2\\{F750E6C3-38EE-11D1-85E5-00C04FC295EE}\\catdb"
+    }
+]

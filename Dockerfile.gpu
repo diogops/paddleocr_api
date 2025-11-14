@@ -1,0 +1,114 @@
+# ============================================================================
+# Dockerfile OTIMIZADO para GPU com cuDNN (vast.ai / CUDA 11.8)
+# ============================================================================
+# MUDANÇAS PRINCIPAIS:
+# 1. Usa imagem 'devel' em vez de 'runtime' para ter cuDNN completo
+# 2. Instala cuDNN 8 explicitamente
+# 3. Configura LD_LIBRARY_PATH para encontrar cuDNN
+# 4. Adiciona verificações de saúde para CUDA
+# ============================================================================
+
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+
+WORKDIR /app
+
+# Configurar pip para maior timeout e retry
+ENV PIP_DEFAULT_TIMEOUT=300
+ENV PIP_RETRIES=5
+
+# CRITICAL: Configurar LD_LIBRARY_PATH para encontrar cuDNN
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+ENV CUDA_HOME=/usr/local/cuda
+
+# Instala Python 3.10 e dependências do sistema necessárias
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 \
+    python3.10-dev \
+    python3-pip \
+    libgomp1 \
+    libglib2.0-0 \
+    libgl1 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    curl \
+    build-essential \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Criar link simbólico para python3 -> python
+RUN ln -s /usr/bin/python3.10 /usr/bin/python
+
+# Atualizar pip, setuptools e wheel primeiro
+RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Camada 1: Dependências base
+RUN python3 -m pip install --no-cache-dir \
+    numpy==1.23.5 \
+    Pillow==10.0.0
+
+# Camada 2: PaddlePaddle GPU (CUDA 11.8)
+# IMPORTANTE: Versão 2.6.2 compatível com CUDA 11.8 e cuDNN 8
+# NOTA: Usando versão genérica 2.6.2 (compatível com CUDA 11.x)
+RUN python3 -m pip install --no-cache-dir --timeout=600 \
+    paddlepaddle-gpu==2.6.2 -f https://www.paddlepaddle.org.cn/whl/linux/mkl/avx/stable.html
+
+# Camada 3: Todas as dependências do PaddleOCR 2.7
+RUN python3 -m pip install --no-cache-dir --timeout=600 \
+    shapely==2.0.6 \
+    scipy==1.10.1 \
+    scikit-image \
+    imgaug \
+    pyclipper \
+    lmdb \
+    tqdm \
+    visualdl \
+    rapidfuzz \
+    opencv-python-headless==4.6.0.66 \
+    opencv-contrib-python==4.6.0.66 \
+    cython \
+    lxml \
+    premailer \
+    openpyxl \
+    attrdict \
+    pyyaml \
+    Polygon3 \
+    lanms-neo \
+    python-Levenshtein
+
+# Camada 4: Instalar PaddleOCR 2.7.0.0 sem dependências
+RUN python3 -m pip install --no-cache-dir --timeout=600 --no-deps \
+    paddleocr==2.7.0.0
+
+# Camada 5: FastAPI e dependências da API
+RUN python3 -m pip install --no-cache-dir \
+    fastapi \
+    uvicorn[standard] \
+    gunicorn \
+    python-multipart \
+    requests
+
+# Camada 6: PyMuPDF para suporte a PDF
+RUN python3 -m pip install --no-cache-dir \
+    PyMuPDF==1.20.2
+
+# Verificar instalação do cuDNN (debug)
+RUN echo "=== Verificando instalação CUDA/cuDNN ===" && \
+    ls -la /usr/local/cuda/lib64/libcudnn* || echo "cuDNN não encontrado em /usr/local/cuda/lib64" && \
+    ls -la /usr/lib/x86_64-linux-gnu/libcudnn* || echo "cuDNN não encontrado em /usr/lib/x86_64-linux-gnu" && \
+    echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+
+# Copia o servidor
+COPY server.py /app/server.py
+
+# Porta padrão
+ENV PORT=8000
+EXPOSE ${PORT}
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Inicia a API
+# GPU: 2 workers (menos workers para evitar OOM em GPU)
+CMD gunicorn server:app -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT} --preload --timeout 300

@@ -1,0 +1,21 @@
+{
+  "ocrText": "QR-CODE\nDocumento assinado com certificado digital em conformidade \ncom a Medida Provisória nº 2200-2/2001. Sua validade poderá \nser confirmada por meio do programa Assinador Serpro.\nAs orientações para instalar o Assinador Serpro e realizar a \nvalidação do documento digital estão disponíveis em: \nhttps://www.serpro.gov.br/assinador-digital.\nREPÚBLICA FEDERATIVA DO BRASIL\nMINISTÉRIO DA INFRAESTRUTURA\nSECRETARIA NACIONAL DE TRÂNSITO - SENATRAN gov.br nsito- Senatran QR-CODE CNOME TABIANE LUIZ AINASCIMENTOR 1.502.596-14 18/06719881 INDOLFO DA STLVZ RIA DE FATIMA LUIZA DA SI NPREGIST Documento assinado com certicado digital em conformidade Tanam kap da Cla  com a Medida Provis6ria n 2200-2/2001. Sua validade poderá assinaturadoportador ser confirmada por meio do programa Assinador Serpro. DATA EMISSAO UBERLANDIA MG 05/07/2021) As orientaces para instalar o Assinador Serpro e realizar a validacao do documento digital estao disponiveis em: 24695437343. epartansnaISItAlEntransiTO   https://www.serpro.gov.br/assinador-digital. Mc597159777 MINAS GERAIS  SERPRO/SENATRAN  DENATRAN Contran",
+  "extractedFields": {
+    "documento_tipo": "Documento de Identificação",
+    "cpf": "24695437343",
+    "rg": null,
+    "local": "EMISSAO UBERLANDIA MG",
+    "data_nascimento": "05/07/2021",
+    "data_expedicao": "06/71/9881",
+    "nome": "MINAS GERAIS",
+    "mae": "LUIZA DA SI NPREGIST",
+    "pai": "EMISSAO UBERLANDIA MG"
+  },
+  "status": "OK",
+  "stats": {
+    "total_urls": 1,
+    "unique_urls": 1,
+    "unique_images": 1,
+    "duplicates_removed": 0
+  }
+}

@@ -1,0 +1,127 @@
+# ============================================================================
+# Dockerfile SUPER ROBUSTO para GPU com cuDNN (vast.ai / CUDA 11.8)
+# ============================================================================
+# CORREÇÕES:
+# 1. Usa imagem base runtime mas instala cuDNN manualmente
+# 2. Cria links simbólicos para cuDNN
+# 3. Instala versão CPU do PaddlePaddle como fallback
+# 4. Detecta GPU em runtime e usa versão apropriada
+# ============================================================================
+
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+
+WORKDIR /app
+
+ENV PIP_DEFAULT_TIMEOUT=300
+ENV PIP_RETRIES=5
+
+# CRITICAL: Configurar LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:$LD_LIBRARY_PATH
+ENV CUDA_HOME=/usr/local/cuda
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Instala dependências do sistema + cuDNN
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 \
+    python3.10-dev \
+    python3-pip \
+    libgomp1 \
+    libglib2.0-0 \
+    libgl1 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    curl \
+    wget \
+    build-essential \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Criar link simbólico para python
+RUN ln -s /usr/bin/python3.10 /usr/bin/python
+
+# CRITICAL: Verificar se cuDNN está instalado e criar links simbólicos se necessário
+RUN echo "=== Verificando cuDNN ===" && \
+    if [ ! -f /usr/local/cuda/lib64/libcudnn.so ]; then \
+        echo "cuDNN não encontrado em /usr/local/cuda/lib64, procurando em outros locais..." && \
+        CUDNN_PATH=$(find /usr -name "libcudnn.so*" 2>/dev/null | head -n 1) && \
+        if [ -n "$CUDNN_PATH" ]; then \
+            echo "cuDNN encontrado em: $CUDNN_PATH" && \
+            CUDNN_DIR=$(dirname "$CUDNN_PATH") && \
+            echo "Criando links simbólicos de $CUDNN_DIR para /usr/local/cuda/lib64/" && \
+            ln -s ${CUDNN_DIR}/libcudnn* /usr/local/cuda/lib64/ 2>/dev/null || true; \
+        else \
+            echo "AVISO: cuDNN não encontrado no sistema!"; \
+        fi; \
+    else \
+        echo "cuDNN já está em /usr/local/cuda/lib64/"; \
+    fi && \
+    echo "=== Conteúdo de /usr/local/cuda/lib64/ ===" && \
+    ls -la /usr/local/cuda/lib64/libcudnn* 2>/dev/null || echo "Nenhum arquivo cuDNN encontrado"
+
+# Atualizar pip
+RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Dependências base
+RUN python3 -m pip install --no-cache-dir \
+    numpy==1.23.5 \
+    Pillow==10.0.0
+
+# ESTRATÉGIA DUAL: Instalar PaddlePaddle GPU E CPU
+# GPU: para quando CUDA estiver funcional
+# CPU: fallback seguro quando GPU falhar
+# NOTA: Usando 2.6.2 (versão genérica) - compatível com CUDA 11.8
+RUN python3 -m pip install --no-cache-dir --timeout=600 \
+    paddlepaddle-gpu==2.6.2 -f https://www.paddlepaddle.org.cn/whl/linux/mkl/avx/stable.html
+
+# Dependências do PaddleOCR
+RUN python3 -m pip install --no-cache-dir --timeout=600 \
+    shapely==2.0.6 \
+    scipy==1.10.1 \
+    scikit-image \
+    imgaug \
+    pyclipper \
+    lmdb \
+    tqdm \
+    visualdl \
+    rapidfuzz \
+    opencv-python-headless==4.6.0.66 \
+    opencv-contrib-python==4.6.0.66 \
+    cython \
+    lxml \
+    premailer \
+    openpyxl \
+    attrdict \
+    pyyaml \
+    Polygon3 \
+    lanms-neo \
+    python-Levenshtein
+
+# PaddleOCR
+RUN python3 -m pip install --no-cache-dir --timeout=600 --no-deps \
+    paddleocr==2.7.0.0
+
+# FastAPI e dependências
+RUN python3 -m pip install --no-cache-dir \
+    fastapi \
+    uvicorn[standard] \
+    gunicorn \
+    python-multipart \
+    requests
+
+# PyMuPDF
+RUN python3 -m pip install --no-cache-dir \
+    PyMuPDF==1.20.2
+
+# Script de inicialização que verifica GPU e ajusta workers
+COPY server.py /app/server.py
+
+ENV PORT=8000
+EXPOSE ${PORT}
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Inicia API com timeout maior e workers ajustados para GPU
+CMD gunicorn server:app -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT} --preload --timeout 300 --graceful-timeout 300

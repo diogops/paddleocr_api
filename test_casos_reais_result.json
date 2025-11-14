@@ -1,0 +1,53 @@
+{
+  "Caso 1 - Imagem Ruim (RG Rosenilda)": {
+    "sucesso": true,
+    "tempo": 2.970858097076416,
+    "chars": 169,
+    "texto": "REPUBLICAFEDERATIVADO BRASI ESTADO-DABAHIA SECRETARIA DA SECURANCA PUBLICA Potalla.Sbnedayesn ASSINATURADOTITULAR CARTEIRADEIDENYIDADE X8180160911 brmmocmorp corest SHON",
+    "campos": {
+      "documento_tipo": "Documento de Identificação",
+      "cpf": null,
+      "rg": null,
+      "local": null,
+      "data_nascimento": null,
+      "data_expedicao": null,
+      "nome": "ASSINATURADOTITULAR CARTEIRADEIDENYIDADE",
+      "mae": "REPUBLICAFEDERATIVADO BRASI",
+      "pai": "SECURANCA PUBLICA"
+    }
+  },
+  "Caso 2 - Mesma Imagem (RG Maria Francisca)": {
+    "sucesso": true,
+    "tempo": 4.164684295654297,
+    "chars": 353,
+    "texto": "OOREPUBLICAFEDERATIVADOBRASIL ESTADO DABAHIA 12.752.185-20 SECRETA 19-01-2022 NAO PLASTIFICAR MARIA FRANCISCA DE JESUS SANTOS **** LUZIA FRANCISCA DE JESUS ITAJU DO COLONIA BA 10-07-1967 C.CAS.CM ITABUNA BA DS JUSSARI LVB03FL/221RT 001114 MariaFonurousunsonto 050.136.785-36 ASSINATURADOTITULAR OTOOCARTEIRADEIDENTIDADECIVILOOYO OOLEIN7.116DEAGOSTODE198",
+    "campos": {
+      "documento_tipo": "Documento de Identificação",
+      "cpf": "050.136.785-36",
+      "rg": "12.752.185-20",
+      "local": "DO COLONIA BA",
+      "data_nascimento": "19-01-2022",
+      "data_expedicao": "10-07-1967",
+      "nome": "ASSINATURADOTITULAR OTOOCARTEIRADEIDENTIDADECIVILOOYO",
+      "mae": "COLONIA BA",
+      "pai": "ITABUNA BA DS JUSSARI"
+    }
+  },
+  "Caso 3 - Sem Qualidade (CNH PDF Tabiane)": {
+    "sucesso": true,
+    "tempo": 4.3752052783966064,
+    "chars": 1141,
+    "texto": "QR-CODE\nDocumento assinado com certificado digital em conformidade \ncom a Medida Provisória nº 2200-2/2001. Sua validade poderá \nser confirmada por meio do programa Assinador Serpro.\nAs orientações para instalar o Assinador Serpro e realizar a \nvalidação do documento digital estão disponíveis em: \nhttps://www.serpro.gov.br/assinador-digital.\nREPÚBLICA FEDERATIVA DO BRASIL\nMINISTÉRIO DA INFRAESTRUTURA\nSECRETARIA NACIONAL DE TRÂNSITO - SENATRAN EPUBLICA FEDERATIVADO BRASIL gov.br NSITO-SENATRAN QR-CODE DEPARR NOM IDENTIDADE/ORG EMISSOR/UF TA NASCIMENTO 8/06/1988 RIA DE FATIMA LUIZA DA SI REGISTRO 04189589515 4/09/2007 OBSERVACOE Documento assinado com certificado digital em conformidade Tarame louiza sdo siva com a Medida Provis6ria no 2200-2/2001. Sua validade poderä ASSINATURA DO PORTADOR ser confirmada por meio do programa Assinador Serpro. LOCAL ATAEMISSAO UBERLANDIA,MG 05/07/202 As orientaces para instalar o Assinador Serpro e realizar a validacao do documento digital estao  disponiveis em: 24695437343 eparrasiniatransT https://www.serpro.gov.br/assinador-digital. MG597159777 MINAS GERAIS SERPRO/SENATRAN DENATRAN CONTRAN",
+    "campos": {
+      "documento_tipo": "RG - Carteira de Identidade",
+      "cpf": "04189589515",
+      "rg": null,
+      "local": "MG",
+      "data_nascimento": null,
+      "data_expedicao": null,
+      "nome": "DENATRAN CONTRAN",
+      "mae": "LOCAL ATAEMISSAO",
+      "pai": "MINAS GERAIS"
+    }
+  }
+}
